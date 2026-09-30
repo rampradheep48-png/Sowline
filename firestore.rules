@@ -1,0 +1,172 @@
+rules_version = '2';
+
+// =============================================================================
+// Sowline India — Firestore security rules
+//
+// Threat model, in the order it matters:
+//
+//  1. **Asymmetry.** A system that tells buyers exactly how much supply is
+//     coming lets buyers depress the price. So: buyers and the public read
+//     demand-side aggregates and gap *direction*; nobody but the owning farmer
+//     reads an individual declaration.
+//  2. **DPDP Act 2023.** A farmer's plot, yield and income are personal data.
+//     Only that farmer (and the server) may read them.
+//  3. **Minimum cell size.** Any publicly readable aggregate must be derived
+//     from >= 5 distinct farmers. The engine stamps `publiclyVisible` and
+//     these rules refuse to serve a cell without it.
+//
+// Everything the engine writes is server-only (admin SDK bypasses rules).
+// Client writes are limited to a farmer's own documents and their response to
+// a recommendation.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isFarmer(farmerId) {
+      return signedIn() && uid() == farmerId;
+    }
+
+    // Set via a custom claim by the admin SDK. Agri-department / ops accounts.
+    function isOfficial() {
+      return signedIn() && request.auth.token.role in ['official', 'admin'];
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == 'admin';
+    }
+
+    // A buyer org account, linked to one demandSources document.
+    function isBuyerFor(sourceId) {
+      return signedIn() && request.auth.token.sourceId == sourceId;
+    }
+
+    // Only fields a farmer is allowed to change on their own recommendation.
+    function onlyResponseFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['farmerResponse', 'respondedAt']);
+    }
+
+    // ------------------------------------------------------- reference tables
+    // Commodities, geographies and the crop calendar ship in the bundle, but
+    // are mirrored here so ops can correct them without a redeploy.
+    match /commodities/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /geographies/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /cropCalendar/{id}  { allow read: if true; allow write: if isAdmin(); }
+
+    // --------------------------------------------------------- demand sources
+    // Org identity is public (a farmer should be able to see who is asking).
+    match /demandSources/{sourceId} {
+      allow read: if true;
+      allow create, update: if isBuyerFor(sourceId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // An upload and its mapping report belong to the uploader alone.
+    match /demandUploads/{uploadId} {
+      allow read: if isAdmin()
+                  || isOfficial()
+                  || isBuyerFor(resource.data.sourceId);
+      allow write: if false; // server-only: the mapper writes these
+    }
+
+    // Raw demand signals are commercially sensitive. Aggregates only, publicly.
+    match /demandSignals/{id} {
+      allow read: if isAdmin()
+                  || isOfficial()
+                  || isBuyerFor(resource.data.sourceId);
+      allow write: if false;
+    }
+
+    match /nameMappings/{id} {
+      allow read: if signedIn();
+      allow write: if false; // server-only cache
+    }
+
+    // Mandi history is public data and stays public.
+    match /priceHistory/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------- farmers
+    match /farmers/{farmerId} {
+      allow read: if isFarmer(farmerId) || isAdmin();
+      // A farmer creates their own record and must record consent on it.
+      allow create: if isFarmer(farmerId)
+                    && request.resource.data.consentVersion is string
+                    && request.resource.data.consentAt is number
+                    && request.resource.data.phone == request.auth.token.phone_number;
+      allow update: if isFarmer(farmerId)
+                    && request.resource.data.phone == resource.data.phone;
+      allow delete: if isFarmer(farmerId) || isAdmin(); // DPDP: right to erase
+    }
+
+    match /plots/{plotId} {
+      allow read: if isAdmin() || isFarmer(resource.data.farmerId);
+      allow create: if isFarmer(request.resource.data.farmerId);
+      allow update, delete: if isFarmer(resource.data.farmerId);
+    }
+
+    // The single most sensitive collection: what an identified farmer will
+    // harvest, and when. Never readable by a buyer, ever.
+    match /supplyDeclarations/{id} {
+      allow read: if isAdmin() || isFarmer(resource.data.farmerId);
+      allow create: if isFarmer(request.resource.data.farmerId);
+      allow update, delete: if isFarmer(resource.data.farmerId);
+    }
+
+    match /intakeDrafts/{id} {
+      allow read, write: if isFarmer(request.resource.data.farmerId)
+                         || (resource != null && isFarmer(resource.data.farmerId));
+    }
+
+    // ---------------------------------------------------------- engine output
+    // Gap buckets are the public dashboard. The minimum-cell rule is enforced
+    // here, not only in the query: a cell backed by fewer than 5 farmers is
+    // readable by officials and the server, and by nobody else.
+    match /gapBuckets/{id} {
+      allow read: if resource.data.publiclyVisible == true || isOfficial() || isAdmin();
+      allow write: if false;
+    }
+
+    // Opportunities are deliberately public — they are the call to action, and
+    // they carry no farmer-level detail, only pool totals.
+    match /opportunities/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // A recommendation is addressed to one farmer. They may accept or decline;
+    // they may not rewrite the advice.
+    match /recommendations/{id} {
+      allow read: if isAdmin() || isFarmer(resource.data.farmerId);
+      allow create: if false;
+      allow update: if isFarmer(resource.data.farmerId)
+                    && onlyResponseFieldsChanged()
+                    && request.resource.data.farmerResponse in ['accepted', 'declined'];
+      allow delete: if false;
+    }
+
+    // The audit trail. Public on purpose: every number on the dashboard should
+    // be traceable to a run a judge can open.
+    match /engineRuns/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------- catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

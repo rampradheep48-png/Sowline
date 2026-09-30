@@ -1,0 +1,45 @@
+# Sowline India — single-host deploy behind nginx.
+#
+#   docker compose up -d --build
+#
+# Reads .env for both build args and runtime env. The port is bound to
+# loopback only: nginx terminates TLS and proxies to it, so the container is
+# never reachable from the internet directly.
+
+services:
+  sowline:
+    build:
+      context: .
+      args:
+        # NEXT_PUBLIC_* must be present at BUILD time — they are inlined into
+        # the client bundle. Setting them only under `environment:` is too late.
+        NEXT_PUBLIC_X_API_KEY: ${NEXT_PUBLIC_X_API_KEY:-abc}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-}
+        # These two must repeat lib/gemini/config.ts's defaults rather than be
+        # left empty: that file uses `?? "..."`, and "" is not nullish, so an
+        # empty build arg wins and the Live session connects to no model.
+        NEXT_PUBLIC_GEMINI_LIVE_MODEL: ${NEXT_PUBLIC_GEMINI_LIVE_MODEL:-gemini-3.1-flash-live-preview}
+        NEXT_PUBLIC_GEMINI_VOICE: ${NEXT_PUBLIC_GEMINI_VOICE:-Aoede}
+    container_name: sowline
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8080"
+    # Server-side vars are passed through from .env as-is. Listing them under
+    # `environment:` with `:-` empty defaults would be worse than not setting
+    # them: the code reads them with `??`, and "" is not nullish, so an empty
+    # value silently beats the documented default. env_file only injects the
+    # keys the file actually contains.
+    #
+    # GEMINI_API_KEY absent -> /api/live/token answers 503 and the typed form
+    # takes over; the app does not crash.
+    env_file:
+      - .env
+    environment:
+      # Must match the NEXT_PUBLIC_X_API_KEY baked in above, or every browser
+      # fetch gets a 401 from requireApiKey().
+      X_API_KEY: ${X_API_KEY:-abc}

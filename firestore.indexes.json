@@ -1,0 +1,182 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "gapBuckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "isoYear", "order": "ASCENDING" },
+        { "fieldPath": "isoWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gapBuckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "region", "order": "ASCENDING" },
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "isoWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gapBuckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publiclyVisible", "order": "ASCENDING" },
+        { "fieldPath": "isoYear", "order": "ASCENDING" },
+        { "fieldPath": "isoWeek", "order": "ASCENDING" },
+        { "fieldPath": "gapKg", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gapBuckets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "isoYear", "order": "ASCENDING" },
+        { "fieldPath": "isoWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "sowWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "region", "order": "ASCENDING" },
+        { "fieldPath": "gapKg", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sowByDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demandSignals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "isoYear", "order": "ASCENDING" },
+        { "fieldPath": "isoWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demandSignals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "demandUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceId", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "supplyDeclarations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "expectedHarvestWeek", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "supplyDeclarations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "farmerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "plots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "farmerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recommendations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "farmerId", "order": "ASCENDING" },
+        { "fieldPath": "farmerResponse", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recommendations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "farmerId", "order": "ASCENDING" },
+        { "fieldPath": "issuedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recommendations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "opportunityId", "order": "ASCENDING" },
+        { "fieldPath": "farmerResponse", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "priceHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "commodityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "isoYear", "order": "DESCENDING" },
+        { "fieldPath": "isoWeek", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "engineRuns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "gapBuckets",
+      "fieldPath": "festivalIds",
+      "indexes": [
+        { "queryScope": "COLLECTION", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "engineRuns",
+      "fieldPath": "skipped",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "demandUploads",
+      "fieldPath": "mappingReport",
+      "indexes": []
+    }
+  ]
+}

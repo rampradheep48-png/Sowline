@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Sowline India — Cloud Storage rules
+//
+// Two kinds of upload, both private by default:
+//   uploads/demand/{sourceId}/…  buyer CSVs
+//   uploads/soil/{farmerId}/…    soil health card / bill photos
+//
+// A soil card photo is personal data under the DPDP Act. It is readable by the
+// farmer who uploaded it and by the server, and by nobody else — including
+// other farmers in the same district.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin()  { return signedIn() && request.auth.token.role == 'admin'; }
+
+    function underSizeMb(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
+    }
+
+    function isTabular() {
+      return request.resource.contentType.matches('text/csv')
+          || request.resource.contentType.matches('application/vnd\\.ms-excel')
+          || request.resource.contentType.matches('application/octet-stream');
+    }
+
+    // Buyer demand uploads — the org that owns the source, plus admins.
+    match /uploads/demand/{sourceId}/{fileName} {
+      allow read: if isAdmin()
+                  || (signedIn() && request.auth.token.sourceId == sourceId);
+      allow write: if signedIn()
+                   && request.auth.token.sourceId == sourceId
+                   && isTabular()
+                   && underSizeMb(20);
+      allow delete: if isAdmin();
+    }
+
+    // Soil health card / bill photos — the farmer alone.
+    match /uploads/soil/{farmerId}/{fileName} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == farmerId);
+      allow write: if signedIn()
+                   && request.auth.uid == farmerId
+                   && isImage()
+                   && underSizeMb(10);
+      allow delete: if signedIn() && request.auth.uid == farmerId;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
